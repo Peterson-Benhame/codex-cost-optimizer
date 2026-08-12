@@ -1,0 +1,22 @@
+{
+  "policy_version": "2026-08-12",
+  "profiles": {
+    "gpt-5.3-codex-spark": {"capability_rank": 2, "cost_rank": 1, "preferred_for": ["mechanical", "defined_implementation"], "pricing_status": "research_preview"},
+    "gpt-5.4-mini": {"capability_rank": 2, "cost_rank": 1, "preferred_for": ["mechanical", "defined_implementation"]},
+    "gpt-5.6-luna": {"capability_rank": 2, "cost_rank": 2, "preferred_for": ["mechanical", "defined_implementation"]},
+    "gpt-5.3-codex": {"capability_rank": 3, "cost_rank": 2, "preferred_for": ["defined_implementation", "complex_engineering"]},
+    "gpt-5.4": {"capability_rank": 3, "cost_rank": 3, "preferred_for": ["defined_implementation", "complex_engineering"]},
+    "gpt-5.6-terra": {"capability_rank": 3, "cost_rank": 3, "preferred_for": ["defined_implementation", "complex_engineering"]},
+    "gpt-5.5": {"capability_rank": 4, "cost_rank": 4, "preferred_for": ["complex_engineering", "investigation"]},
+    "gpt-5.6-sol": {"capability_rank": 4, "cost_rank": 4, "preferred_for": ["complex_engineering", "investigation"]}
+  },
+  "pricing": {
+    "gpt-5.6-sol": {"effective_date": "2026-08-12", "input_per_million": 125, "cached_input_per_million": 12.5, "output_per_million": 750, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.6-terra": {"effective_date": "2026-08-12", "input_per_million": 62.5, "cached_input_per_million": 6.25, "output_per_million": 375, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.6-luna": {"effective_date": "2026-08-12", "input_per_million": 25, "cached_input_per_million": 2.5, "output_per_million": 150, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.5": {"effective_date": "2026-08-12", "input_per_million": 125, "cached_input_per_million": 12.5, "output_per_million": 750, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.4": {"effective_date": "2026-08-12", "input_per_million": 62.5, "cached_input_per_million": 6.25, "output_per_million": 375, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.4-mini": {"effective_date": "2026-08-12", "input_per_million": 18.75, "cached_input_per_million": 1.875, "output_per_million": 113, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"},
+    "gpt-5.3-codex": {"effective_date": "2026-08-12", "input_per_million": 43.75, "cached_input_per_million": 4.375, "output_per_million": 350, "currency_or_credit_unit": "credits", "source_url": "https://help.openai.com/en/articles/20001106"}
+  }
+}

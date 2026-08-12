@@ -36,7 +36,12 @@ class CatalogProvider:
         return self._cached
 
     @staticmethod
-    def _map_model(raw: Any) -> ModelDescriptor:
+    def _normalize_effort(value: Any) -> ReasoningEffort:
+        raw_value = getattr(value, "value", value)
+        return ReasoningEffort(str(raw_value).lower())
+
+    @classmethod
+    def _map_model(cls, raw: Any) -> ModelDescriptor:
         model_id = str(getattr(raw, "id", "")).strip()
         if not model_id:
             raise ValueError("Codex runtime returned a model with empty id")
@@ -44,11 +49,11 @@ class CatalogProvider:
         efforts: list[ReasoningEffort] = []
         for item in raw_efforts:
             value = getattr(item, "reasoning_effort", None) or getattr(item, "effort", None) or item
-            efforts.append(ReasoningEffort(str(value)))
+            efforts.append(cls._normalize_effort(value))
         if not efforts:
             default_raw = getattr(raw, "default_reasoning_effort", "medium")
-            efforts = [ReasoningEffort(str(default_raw))]
-        default = ReasoningEffort(str(getattr(raw, "default_reasoning_effort", efforts[0].value)))
+            efforts = [cls._normalize_effort(default_raw)]
+        default = cls._normalize_effort(getattr(raw, "default_reasoning_effort", efforts[0].value))
         if default not in efforts:
             efforts.append(default)
         return ModelDescriptor(

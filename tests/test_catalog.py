@@ -1,3 +1,5 @@
+from enum import Enum
+
 from codex_cost_optimizer.catalog import CatalogProvider
 
 
@@ -54,3 +56,23 @@ def test_catalog_accepts_official_effort_field_shape():
             )])
     model = CatalogProvider(OfficialFake()).load().find("gpt-x")
     assert [effort.value for effort in model.supported_efforts] == ["low", "high"]
+
+
+def test_catalog_accepts_sdk_enum_effort_values():
+    class SdkEffort(str, Enum):
+        low = "low"
+        medium = "medium"
+
+    class EnumFake:
+        def models(self, include_hidden=False):
+            return Obj(data=[Obj(
+                id="gpt-x",
+                display_name="GPT X",
+                description="x",
+                supported_reasoning_efforts=[Obj(reasoning_effort=SdkEffort.low), Obj(reasoning_effort=SdkEffort.medium)],
+                default_reasoning_effort=SdkEffort.low,
+            )])
+
+    model = CatalogProvider(EnumFake()).load().find("gpt-x")
+    assert [effort.value for effort in model.supported_efforts] == ["low", "medium"]
+    assert model.default_effort.value == "low"

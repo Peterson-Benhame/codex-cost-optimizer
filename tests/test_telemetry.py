@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -8,9 +9,14 @@ from codex_cost_optimizer.telemetry import RoutingEvent, TelemetryStore, default
 
 
 def test_default_telemetry_path_is_not_relative_to_project(monkeypatch, tmp_path):
-    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
-    path = default_telemetry_path()
-    assert path == tmp_path / "state" / "codex-cost-optimizer" / "events.jsonl"
+    if sys.platform.startswith("win"):
+        monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "localappdata"))
+        path = default_telemetry_path()
+        assert path == tmp_path / "localappdata" / "codex-cost-optimizer" / "telemetry" / "events.jsonl"
+    else:
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        path = default_telemetry_path()
+        assert path == tmp_path / "state" / "codex-cost-optimizer" / "events.jsonl"
 
 
 def test_event_schema_rejects_prompt_content():

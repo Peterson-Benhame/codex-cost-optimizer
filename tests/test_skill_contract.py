@@ -14,3 +14,11 @@ def test_skill_frontmatter_and_core_contract():
     assert "uma recomendação" in lower
     assert "configuração global" in lower
     assert "cco" in lower
+
+
+def test_skill_distinguishes_main_thread_from_subagent_application():
+    text=SKILL.read_text(encoding="utf-8").lower()
+    assert "seletor nativo" in text
+    assert "não tente alterar automaticamente a thread principal" in text
+    assert "subagente" in text
+    assert "explicitamente" in text

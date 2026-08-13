@@ -6,7 +6,7 @@ from typing import Any
 from .approval import ApprovalProvider
 from .classifier import DeterministicClassifier
 from .codex_runtime import ConfigurationApplyError
-from .domain import ApprovalResult, PreparedTurn, RuntimeState, TaskMetadata
+from .domain import ApprovalResult, ExecutionScope, ManualSwitchRequired, PreparedTurn, RuntimeState, SubagentDispatch, TaskMetadata
 from .fallback_classifier import FallbackClassifier, RoutingSummary
 from .materiality import MaterialityGate, RejectionRegistry
 from .pricing import PricingRegistry
@@ -67,6 +67,14 @@ class CostOptimizerService:
             self._log_usage(prepared,result,prepared.runtime_state.current_model,prepared.runtime_state.current_effort.value)
             return result
         if rec is not None and approval is not None and approval.approved:
+            if prepared.metadata.execution_scope is ExecutionScope.MAIN_THREAD:
+                self._log_decision(prepared,approval,switch_confirmed=False,reason_code="manual_switch_required")
+                return ManualSwitchRequired(
+                    target_model=rec.target_model,
+                    target_effort=rec.target_effort,
+                    reason=rec.reason,
+                    cost_impact=rec.cost_impact,
+                )
             try:
                 result=self.runtime.run_turn(thread,prepared.task_text,model=rec.target_model,effort=rec.target_effort)
                 self._log_decision(prepared,approval,switch_confirmed=True)
@@ -80,6 +88,22 @@ class CostOptimizerService:
         result=self.runtime.run_current_turn(thread,prepared.task_text)
         self._log_usage(prepared,result,prepared.runtime_state.current_model,prepared.runtime_state.current_effort.value)
         return result
+
+    def resolve_subagent_dispatch(self, prepared: PreparedTurn) -> SubagentDispatch:
+        if prepared.metadata.execution_scope is not ExecutionScope.SUBAGENT:
+            raise ValueError("subagent dispatch requires execution_scope=subagent")
+        rec=prepared.recommendation
+        if rec is None:
+            return SubagentDispatch(prepared.runtime_state.current_model,prepared.runtime_state.current_effort,False)
+        approval=prepared.approval or self.approval_provider.request(rec)
+        if not approval.approved:
+            self.rejections.reject(rec.phase_fingerprint)
+            prepared=prepared.with_approval(approval)
+            self._log_decision(prepared,approval,switch_confirmed=False,reason_code="subagent_override_denied")
+            return SubagentDispatch(prepared.runtime_state.current_model,prepared.runtime_state.current_effort,False)
+        prepared=prepared.with_approval(approval)
+        self._log_decision(prepared,approval,switch_confirmed=False,reason_code="subagent_spawn_authorized")
+        return SubagentDispatch(rec.target_model,rec.target_effort,True)
 
     def _log_decision(self, prepared: PreparedTurn, approval: ApprovalResult, *, switch_confirmed: bool, reason_code: str | None=None) -> None:
         if not self.telemetry or not prepared.recommendation: return

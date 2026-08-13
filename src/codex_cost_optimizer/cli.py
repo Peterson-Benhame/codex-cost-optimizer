@@ -9,7 +9,7 @@ import typer
 from .approval import TerminalApprovalProvider
 from .classifier import DeterministicClassifier
 from .codex_runtime import CodexRuntime, RuntimeStateUnavailable
-from .domain import ReasoningEffort, RuntimeState, TaskMetadata
+from .domain import ManualSwitchRequired, ReasoningEffort, RuntimeState, TaskMetadata
 from .fallback_classifier import CodexClassifierClient, FallbackClassifier, select_fallback_model
 from .materiality import MaterialityGate, RejectionRegistry
 from .pricing import PricingRegistry
@@ -108,13 +108,21 @@ def run(
                 raise typer.BadParameter("a thread não expõe model/reasoning; forneça uma nova thread com --model e --effort") from exc
         else:
             if model is None or effort is None:
-                raise typer.BadParameter("na V1 Core, uma nova thread exige --model e --effort; o adapter VS Code fornecerá isso automaticamente")
+                raise typer.BadParameter("na V1 Core, uma nova thread exige --model e --effort")
             current_model,current_effort=model,effort
             thread=codex.thread_start(model=model, config={"model_reasoning_effort": effort.value})
         state=RuntimeState(current_model,current_effort,session_id=getattr(thread,"id","session"),thread_id=getattr(thread,"id",None))
         meta=TaskMetadata(spec_available=spec,root_cause_known=root_cause_known,estimated_files=files,cross_module=cross_module,unexpected_error=unexpected_error,risk=risk,expected_work_units=work_units)
         prepared=service.prepare_turn(text,meta,state)
         result=service.execute_turn(prepared,thread=thread)
+        if isinstance(result, ManualSwitchRequired):
+            typer.echo("manual_switch_required=true")
+            typer.echo(f"target_model={result.target_model}")
+            typer.echo(f"target_effort={result.target_effort.value}")
+            typer.echo(f"reason={result.reason}")
+            typer.echo(f"cost_impact={result.cost_impact}")
+            typer.echo("action=altere model/reasoning no seletor nativo do Codex e confirme o estado antes de continuar")
+            return
         if getattr(result,"final_response",None): typer.echo(result.final_response)
 
 

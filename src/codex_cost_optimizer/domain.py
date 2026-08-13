@@ -16,6 +16,11 @@ class ReasoningEffort(str, Enum):
     ULTRA = "ultra"
 
 
+class ExecutionScope(str, Enum):
+    MAIN_THREAD = "main_thread"
+    SUBAGENT = "subagent"
+
+
 class TaskPhase(str, Enum):
     MECHANICAL = "mechanical"
     DEFINED_IMPLEMENTATION = "defined_implementation"
@@ -61,6 +66,7 @@ class RuntimeState:
 
 @dataclass(frozen=True)
 class TaskMetadata:
+    execution_scope: ExecutionScope = ExecutionScope.MAIN_THREAD
     spec_available: bool = False
     root_cause_known: bool | None = None
     estimated_files: int = 1
@@ -180,3 +186,18 @@ class PreparedTurn:
             recommendation=self.recommendation,
             approval=approval,
         )
+
+
+@dataclass(frozen=True)
+class ManualSwitchRequired:
+    target_model: str
+    target_effort: ReasoningEffort
+    reason: str
+    cost_impact: str
+
+
+@dataclass(frozen=True)
+class SubagentDispatch:
+    model: str
+    effort: ReasoningEffort
+    change_authorized: bool

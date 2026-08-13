@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from codex_cost_optimizer.approval import TerminalApprovalProvider
 from codex_cost_optimizer.catalog import CatalogSnapshot
 from codex_cost_optimizer.classifier import DeterministicClassifier
 from codex_cost_optimizer.codex_runtime import ConfigurationApplyError
-from codex_cost_optimizer.domain import ModelDescriptor, ReasoningEffort, RuntimeState, TaskMetadata
+from codex_cost_optimizer.domain import ExecutionScope, ManualSwitchRequired, ModelDescriptor, ReasoningEffort, RuntimeState, TaskMetadata
 from codex_cost_optimizer.fallback_classifier import FallbackClassifier
 from codex_cost_optimizer.materiality import MaterialityGate, RejectionRegistry
 from codex_cost_optimizer.routing import ModelPolicy, Router
@@ -74,9 +75,12 @@ def test_scenario_a_trivial_task_on_sol_recommends_economic_model_and_requires_a
     state=RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH,"s","t")
     prepared=svc.prepare_turn("Adicione comentários XML",TaskMetadata(risk="low",estimated_files=1,expected_work_units=2),state)
     assert prepared.recommendation.target_model == "gpt-5.3-codex-spark"
-    svc.execute_turn(prepared,thread=object())
+    result=svc.execute_turn(prepared,thread=object())
     assert ap.calls == 1
-    assert rt.calls[0] == ("override","gpt-5.3-codex-spark","low")
+    assert isinstance(result, ManualSwitchRequired)
+    assert result.target_model == "gpt-5.3-codex-spark"
+    assert result.target_effort == ReasoningEffort.LOW
+    assert rt.calls == []
 
 
 def test_scenario_b_unknown_root_high_risk_escalates_from_economic_model():
@@ -98,7 +102,7 @@ def test_scenario_c_denial_keeps_current_and_suppresses_same_phase():
 
 def test_scenario_d_authorized_but_unconfirmed_switch_falls_back_to_current_without_global_change():
     rt=FakeRuntime(catalog("gpt-5.6-sol","gpt-5.4-mini"),fail_switch=True); svc=make_service(rt,Approval(True))
-    p=svc.prepare_turn("Adicione XML comments",TaskMetadata(risk="low",estimated_files=1,expected_work_units=2),RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH))
+    p=svc.prepare_turn("Adicione XML comments",TaskMetadata(risk="low",estimated_files=1,expected_work_units=2,execution_scope=ExecutionScope.SUBAGENT),RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH))
     svc.execute_turn(p,thread=object())
     assert [c[0] for c in rt.calls] == ["override","current"]
 
@@ -141,3 +145,37 @@ def test_optimizer_can_be_disabled_without_changing_current_execution():
     svc.execute_turn(p,thread=object())
     assert ap.calls == 0
     assert rt.calls == [("current",None,None)]
+
+
+def test_main_thread_authorized_change_stops_before_expensive_turn():
+    rt=FakeRuntime(catalog("gpt-5.6-sol","gpt-5.3-codex-spark")); ap=Approval(True); svc=make_service(rt,ap)
+    state=RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH,"s","t")
+    meta=TaskMetadata(risk="low",estimated_files=1,expected_work_units=10,execution_scope=ExecutionScope.MAIN_THREAD)
+    prepared=svc.prepare_turn("Adicione comentários XML",meta,state)
+    result=svc.execute_turn(prepared,thread=object())
+    assert isinstance(result, ManualSwitchRequired)
+    assert rt.calls == []
+
+
+def test_subagent_dispatch_can_use_authorized_target_before_spawn():
+    rt=FakeRuntime(catalog("gpt-5.6-sol","gpt-5.3-codex-spark")); ap=Approval(True); svc=make_service(rt,ap)
+    state=RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH,"s","parent-thread")
+    meta=TaskMetadata(risk="low",expected_work_units=10,execution_scope=ExecutionScope.SUBAGENT,parent_model="gpt-5.6-sol",parent_effort=ReasoningEffort.HIGH)
+    prepared=svc.prepare_turn("Localize referências",meta,state)
+    dispatch=svc.resolve_subagent_dispatch(prepared)
+    assert dispatch.model == "gpt-5.3-codex-spark"
+    assert dispatch.effort == ReasoningEffort.LOW
+    assert dispatch.change_authorized is True
+    assert rt.calls == []
+
+
+def test_subagent_dispatch_denial_keeps_parent_configuration():
+    rt=FakeRuntime(catalog("gpt-5.6-sol","gpt-5.3-codex-spark")); ap=Approval(False); svc=make_service(rt,ap)
+    state=RuntimeState("gpt-5.6-sol",ReasoningEffort.HIGH,"s","parent-thread")
+    meta=TaskMetadata(risk="low",expected_work_units=10,execution_scope=ExecutionScope.SUBAGENT,parent_model="gpt-5.6-sol",parent_effort=ReasoningEffort.HIGH)
+    prepared=svc.prepare_turn("Localize referências",meta,state)
+    dispatch=svc.resolve_subagent_dispatch(prepared)
+    assert dispatch.model == "gpt-5.6-sol"
+    assert dispatch.effort == ReasoningEffort.HIGH
+    assert dispatch.change_authorized is False
+    assert rt.calls == []

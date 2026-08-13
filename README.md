@@ -1,5 +1,12 @@
 # Codex Cost Optimizer
 
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![OpenAI Codex](https://img.shields.io/badge/OpenAI-Codex-000000?logo=openai&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-58%20passing-2ea44f?logo=pytest&logoColor=white)
+![Zero-token first](https://img.shields.io/badge/routing-zero--token%20first-0A7BBC)
+![Local telemetry](https://img.shields.io/badge/telemetry-local%20metadata-6f42c1)
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-d4a72c)
+
 > Roteamento local de `model + reasoning` para o Codex, orientado a custo, com autorização explícita do usuário e telemetria de economia.
 
 O **Codex Cost Optimizer** nasceu de um problema simples: usar o modelo mais poderoso em todas as etapas de desenvolvimento pode consumir muito mais créditos/tokens do que o necessário.
